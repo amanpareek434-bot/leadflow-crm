@@ -17,6 +17,9 @@ export function SiteHeader() {
           <Link href="/#features" className="hover:text-foreground">Features</Link>
           <Link href="/#integrations" className="hover:text-foreground">Integrations</Link>
           <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
+          <a href="https://claude.ai/code/artifact/55636bd2-5082-440f-93a0-c6e16b20bed6" target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
+            Docs
+          </a>
         </nav>
         <div className="flex items-center gap-2">
           <ThemeToggle />

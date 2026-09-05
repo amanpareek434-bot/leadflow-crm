@@ -7,6 +7,9 @@ export function SiteFooter() {
         <p>© {new Date().getFullYear()} LeadFlow CRM. All rights reserved.</p>
         <div className="flex gap-6">
           <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
+          <a href="https://claude.ai/code/artifact/55636bd2-5082-440f-93a0-c6e16b20bed6" target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
+            Docs
+          </a>
           <Link href="/login" className="hover:text-foreground">Log in</Link>
           <Link href="/register" className="hover:text-foreground">Sign up</Link>
         </div>
