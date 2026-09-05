@@ -73,7 +73,18 @@ Railway → web service → **Settings → Networking → Custom Domain**. Point
 2. Under **App Settings → Basic**, copy the App Secret into `WHATSAPP_APP_SECRET` (env var, set once for the whole deployment).
 3. Under **WhatsApp → Configuration**, set the webhook URL to `https://<your-domain>/api/webhooks/whatsapp`, and the verify token to whatever you choose as `WHATSAPP_WEBHOOK_VERIFY_TOKEN` (env var, set once).
 4. **For each customer:** they add the **WhatsApp** product to their own Meta Business (or you add their number as a client under your app, if you're operating as a Tech Provider — see Meta's [Tech Provider docs](https://developers.facebook.com/docs/whatsapp/tech-provider) for managing many clients' numbers under one app). Either way, they end up with a **Phone Number ID**, **WhatsApp Business Account ID**, and an **Access Token** (permanent token via System Users, with `whatsapp_business_messaging` + `whatsapp_business_management` permissions) — they paste these three values into their own CRM Integrations → WhatsApp card.
-5. Message templates are created/approved per customer, under their own WABA (**WhatsApp → Message Templates**, reviewed by Meta — usually a few hours to a day). Once approved, each customer clicks "Sync from WhatsApp" on their own WhatsApp → Templates page to pull them in.
+5. Message templates are created/approved per customer, under their own WABA — each customer clicks **Create new template** on their own WhatsApp → Templates page (this submits it to Meta directly, no separate Meta login needed) and waits for approval (usually a few hours to a day), or clicks **Sync from WhatsApp** if they already made one in WhatsApp Business Manager.
+
+#### Optional: one-click "Connect with Facebook" (Wati/AiSensy-style), instead of step 4
+
+By default, step 4 above means each customer copy-pastes their Phone Number ID / WABA ID / Access Token by hand — this always works and needs no special approval. If you'd rather your customers click **Connect with Facebook** and have Meta link their number automatically (no manual IDs), that requires **you** to be approved as a Meta **Tech Provider with WhatsApp Embedded Signup enabled** — this is Meta's own approval, not something togglable in code:
+
+1. Apply via [Meta's Tech Provider Program](https://developers.facebook.com/docs/whatsapp/tech-provider) — needs your business verified in Meta Business Manager. Approval isn't instant (days to weeks).
+2. Once approved, in your Meta App → **WhatsApp → Embedded Signup**, create a signup configuration and copy its **Configuration ID**.
+3. Set `NEXT_PUBLIC_META_APP_ID` (same value as `META_APP_ID`) and `NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID` (the configuration ID) — the moment both are set, every customer's Integrations → WhatsApp card shows a **Connect with Facebook** button above the manual form instead of requiring it.
+4. Until you complete steps 1–2, leave both variables blank — the button code (`src/app/(dashboard)/integrations/whatsapp-embedded-signup-button.tsx`) simply renders nothing and the manual flow is the only path, fully working either way.
+
+Note this only covers *connecting* a number, not billing: WhatsApp's own per-conversation fees are charged by Meta to whichever payment method is on the WABA. The simplest setup (and what this deployment assumes) is each customer adds their own payment method directly in Meta Business Manager — you never see or handle that charge. Passing those costs through your own CRM billing instead (like a full BSP) is a separate, much larger project (a usage-tracking + markup + wallet system) that isn't built here.
 
 ### Meta Ads (Lead Ads)
 1. Same Meta app as above (or a new one) → add the **Marketing API** product.

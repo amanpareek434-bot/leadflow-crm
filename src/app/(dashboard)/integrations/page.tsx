@@ -14,6 +14,7 @@ import { MetaSettingsForm } from "./meta-settings-form";
 import { GoogleAdsSettingsForm } from "./google-ads-settings-form";
 import { GoogleSheetsSettingsForm } from "./google-sheets-settings-form";
 import { WhatsAppSettingsForm } from "./whatsapp-settings-form";
+import { WhatsAppEmbeddedSignupButton } from "./whatsapp-embedded-signup-button";
 import type { Integration, IntegrationType } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -56,6 +57,12 @@ export default async function IntegrationsPage({
   const googleAdsCreds = safeDecrypt<{ customerId?: string }>(googleAds);
   const googleSheetsCreds = safeDecrypt<{ spreadsheetId?: string; sheetName?: string }>(googleSheets);
   const whatsappCreds = safeDecrypt<{ phoneNumberId?: string; businessAccountId?: string; accessToken?: string }>(whatsapp);
+  // Only true once the platform owner has real Meta Tech Provider / Embedded
+  // Signup access configured — until then this is always false and the
+  // manual-entry form is the only (fully working) option.
+  const embeddedSignupConfigured = Boolean(
+    process.env.NEXT_PUBLIC_META_APP_ID && process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID
+  );
 
   return (
     <div>
@@ -229,11 +236,29 @@ export default async function IntegrationsPage({
           <CardContent className="space-y-3">
             {whatsapp?.lastError && <p className="text-xs text-destructive">Error: {whatsapp.lastError}</p>}
             {canManage ? (
-              <WhatsAppSettingsForm
-                phoneNumberId={whatsappCreds?.phoneNumberId ?? ""}
-                businessAccountId={whatsappCreds?.businessAccountId ?? ""}
-                hasAccessToken={Boolean(whatsappCreds?.accessToken)}
-              />
+              embeddedSignupConfigured ? (
+                <>
+                  <WhatsAppEmbeddedSignupButton />
+                  <details className="rounded-md border border-border">
+                    <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-muted-foreground">
+                      Or connect manually (Phone Number ID / Access Token)
+                    </summary>
+                    <div className="border-t border-border p-3">
+                      <WhatsAppSettingsForm
+                        phoneNumberId={whatsappCreds?.phoneNumberId ?? ""}
+                        businessAccountId={whatsappCreds?.businessAccountId ?? ""}
+                        hasAccessToken={Boolean(whatsappCreds?.accessToken)}
+                      />
+                    </div>
+                  </details>
+                </>
+              ) : (
+                <WhatsAppSettingsForm
+                  phoneNumberId={whatsappCreds?.phoneNumberId ?? ""}
+                  businessAccountId={whatsappCreds?.businessAccountId ?? ""}
+                  hasAccessToken={Boolean(whatsappCreds?.accessToken)}
+                />
+              )
             ) : (
               <p className="text-sm text-muted-foreground">Only Owners and Admins can connect WhatsApp.</p>
             )}
