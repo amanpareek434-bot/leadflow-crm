@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasRole, ForbiddenError } from "@/lib/rbac";
-import { fetchApprovedTemplates } from "@/lib/integrations/whatsapp";
+import { fetchApprovedTemplates, getWhatsAppCredentialsForOrg } from "@/lib/integrations/whatsapp";
 import type { WhatsAppTemplateStatus } from "@prisma/client";
 
 function mapStatus(status: string): WhatsAppTemplateStatus {
@@ -25,7 +25,8 @@ export async function POST() {
 
     let metaTemplates;
     try {
-      metaTemplates = await fetchApprovedTemplates();
+      const creds = await getWhatsAppCredentialsForOrg(organizationId);
+      metaTemplates = await fetchApprovedTemplates(creds);
     } catch (err: any) {
       return NextResponse.json(
         { error: err?.message ?? "Connect WhatsApp in Integrations first" },

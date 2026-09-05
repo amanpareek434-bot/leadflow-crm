@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyMetaSignature } from "@/lib/integrations/whatsapp";
+import { verifyMetaSignature, findOrgByPhoneNumberId } from "@/lib/integrations/whatsapp";
 import { emitEvent } from "@/lib/webhooks";
 import type { MessageStatus } from "@prisma/client";
 
@@ -37,6 +37,7 @@ function mapMetaStatus(status: string): MessageStatus | null {
 }
 
 type MetaWebhookValue = {
+  metadata?: { phone_number_id?: string };
   statuses?: Array<{ id: string; status: string; recipient_id?: string }>;
   messages?: Array<{ from: string; id: string; text?: { body?: string }; timestamp?: string }>;
 };
@@ -66,34 +67,43 @@ async function processEntry(value: MetaWebhookValue) {
     });
   }
 
-  // Inbound messages from the customer.
-  for (const m of value.messages ?? []) {
-    const body = m.text?.body ?? "";
-    const fromPhone = m.from;
+  // Inbound messages from the customer. This one endpoint serves every
+  // tenant's WhatsApp number, so we resolve which org owns the receiving
+  // phone_number_id (Meta includes it in `value.metadata`) rather than
+  // assuming a single global number.
+  if (value.messages?.length) {
+    const phoneNumberId = value.metadata?.phone_number_id;
+    const organizationId = phoneNumberId ? await findOrgByPhoneNumberId(phoneNumberId) : null;
 
-    // Lead.phone isn't globally unique across tenants — best-effort match to
-    // the most recently created Lead with this phone number.
-    const lead = await prisma.lead.findFirst({
-      where: { phone: fromPhone },
-      orderBy: { createdAt: "desc" },
-    });
+    for (const m of value.messages) {
+      const body = m.text?.body ?? "";
+      const fromPhone = m.from;
 
-    if (!lead) {
-      console.warn(`whatsapp webhook: no Lead found for inbound phone=${fromPhone}, skipping persist`);
-      continue;
+      // Fall back to matching by phone number (within the resolved org, or
+      // globally as a last resort) if org resolution above didn't work out.
+      const lead = await prisma.lead.findFirst({
+        where: organizationId ? { organizationId, phone: fromPhone } : { phone: fromPhone },
+        orderBy: { createdAt: "desc" },
+      });
+
+      const resolvedOrgId = lead?.organizationId ?? organizationId;
+      if (!resolvedOrgId) {
+        console.warn(`whatsapp webhook: could not resolve organization for inbound phone=${fromPhone}, skipping persist`);
+        continue;
+      }
+
+      await prisma.whatsAppMessageLog.create({
+        data: {
+          organizationId: resolvedOrgId,
+          leadId: lead?.id,
+          direction: "INBOUND",
+          toPhone: fromPhone,
+          body,
+          waMessageId: m.id,
+          status: "DELIVERED",
+        },
+      });
     }
-
-    await prisma.whatsAppMessageLog.create({
-      data: {
-        organizationId: lead.organizationId,
-        leadId: lead.id,
-        direction: "INBOUND",
-        toPhone: fromPhone,
-        body,
-        waMessageId: m.id,
-        status: "DELIVERED",
-      },
-    });
   }
 }
 

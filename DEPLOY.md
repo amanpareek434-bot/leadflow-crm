@@ -62,12 +62,14 @@ Railway → web service → **Settings → Networking → Custom Domain**. Point
 ## Getting each integration's credentials
 
 ### WhatsApp Business Platform (Meta Cloud API) — official WhatsApp
-1. Go to [developers.facebook.com](https://developers.facebook.com) → **My Apps → Create App** → type "Business".
-2. Add the **WhatsApp** product to the app. Under **WhatsApp → API Setup** you'll get a temporary access token, a **Phone Number ID**, and a **WhatsApp Business Account ID** — for production, generate a permanent token under **System Users** (Business Settings) with `whatsapp_business_messaging` + `whatsapp_business_management` permissions.
-3. Set `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_ACCESS_TOKEN`.
-4. Under **WhatsApp → Configuration**, set the webhook URL to `https://<your-domain>/api/webhooks/whatsapp`, and the verify token to whatever you set as `WHATSAPP_WEBHOOK_VERIFY_TOKEN`. Subscribe to the `messages` field.
-5. `WHATSAPP_APP_SECRET` is under **App Settings → Basic**.
-6. Create/submit your message templates for approval under **WhatsApp → Message Templates** (Meta reviews these — usually within a few hours to a day). Once approved, use the "Sync from WhatsApp" button on the CRM's WhatsApp → Templates page to pull them in.
+
+**Per-customer, not per-deployment.** Each of your customers connects their own WhatsApp number from their own Organization's **Integrations** page in the app (Phone Number ID, WABA ID, Access Token — no env vars, no redeploy needed per customer). You (the platform owner) only need to set up ONE Meta App, which every customer's number sends webhook traffic through:
+
+1. Go to [developers.facebook.com](https://developers.facebook.com) → **My Apps → Create App** → type "Business". This is **your** one app — customers don't create their own.
+2. Under **App Settings → Basic**, copy the App Secret into `WHATSAPP_APP_SECRET` (env var, set once for the whole deployment).
+3. Under **WhatsApp → Configuration**, set the webhook URL to `https://<your-domain>/api/webhooks/whatsapp`, and the verify token to whatever you choose as `WHATSAPP_WEBHOOK_VERIFY_TOKEN` (env var, set once).
+4. **For each customer:** they add the **WhatsApp** product to their own Meta Business (or you add their number as a client under your app, if you're operating as a Tech Provider — see Meta's [Tech Provider docs](https://developers.facebook.com/docs/whatsapp/tech-provider) for managing many clients' numbers under one app). Either way, they end up with a **Phone Number ID**, **WhatsApp Business Account ID**, and an **Access Token** (permanent token via System Users, with `whatsapp_business_messaging` + `whatsapp_business_management` permissions) — they paste these three values into their own CRM Integrations → WhatsApp card.
+5. Message templates are created/approved per customer, under their own WABA (**WhatsApp → Message Templates**, reviewed by Meta — usually a few hours to a day). Once approved, each customer clicks "Sync from WhatsApp" on their own WhatsApp → Templates page to pull them in.
 
 ### Meta Ads (Lead Ads)
 1. Same Meta app as above (or a new one) → add the **Marketing API** product.

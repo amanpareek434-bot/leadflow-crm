@@ -13,6 +13,7 @@ import { ShopifyConnectForm } from "./shopify-connect-form";
 import { MetaSettingsForm } from "./meta-settings-form";
 import { GoogleAdsSettingsForm } from "./google-ads-settings-form";
 import { GoogleSheetsSettingsForm } from "./google-sheets-settings-form";
+import { WhatsAppSettingsForm } from "./whatsapp-settings-form";
 import type { Integration, IntegrationType } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -49,10 +50,12 @@ export default async function IntegrationsPage({
   const googleAds = byType.get("GOOGLE_ADS");
   const googleSheets = byType.get("GOOGLE_SHEETS");
   const shopify = byType.get("SHOPIFY");
+  const whatsapp = byType.get("WHATSAPP");
 
   const metaCreds = safeDecrypt<{ adAccountId?: string; formIds?: string[] }>(meta);
   const googleAdsCreds = safeDecrypt<{ customerId?: string }>(googleAds);
   const googleSheetsCreds = safeDecrypt<{ spreadsheetId?: string; sheetName?: string }>(googleSheets);
+  const whatsappCreds = safeDecrypt<{ phoneNumberId?: string; businessAccountId?: string; accessToken?: string }>(whatsapp);
 
   return (
     <div>
@@ -212,19 +215,30 @@ export default async function IntegrationsPage({
           </CardContent>
         </Card>
 
-        {/* WhatsApp — informational only, configured via env vars by another module */}
+        {/* WhatsApp — each org connects their own number (no OAuth flow, manual entry) */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>WhatsApp</CardTitle>
-              <Badge variant="secondary">Managed by admin</Badge>
+              <Badge variant={STATUS_BADGE[whatsapp?.status ?? "NOT_CONNECTED"]}>
+                {whatsapp?.status ?? "NOT_CONNECTED"}
+              </Badge>
             </div>
-            <CardDescription>Official WhatsApp Cloud API, used for templates and automations.</CardDescription>
+            <CardDescription>Official WhatsApp Cloud API — your own number, used for templates and automations.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Configured by your administrator via environment variables — there's no per-org connect flow for
-              WhatsApp. See the WhatsApp section in the sidebar to manage templates and automations.
+          <CardContent className="space-y-3">
+            {whatsapp?.lastError && <p className="text-xs text-destructive">Error: {whatsapp.lastError}</p>}
+            {canManage ? (
+              <WhatsAppSettingsForm
+                phoneNumberId={whatsappCreds?.phoneNumberId ?? ""}
+                businessAccountId={whatsappCreds?.businessAccountId ?? ""}
+                hasAccessToken={Boolean(whatsappCreds?.accessToken)}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">Only Owners and Admins can connect WhatsApp.</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              See the WhatsApp section in the sidebar to manage templates and automations once connected.
             </p>
           </CardContent>
         </Card>

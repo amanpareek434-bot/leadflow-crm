@@ -9,7 +9,7 @@ import { Worker, type Job } from "bullmq";
 import { getRedisConnection } from "@/lib/queue/connection";
 import { QUEUE_NAMES, type WhatsappSendJob, type WebhookDeliveryJob, type AdsSyncJob } from "@/lib/queue/queues";
 import { prisma } from "@/lib/prisma";
-import { sendWhatsAppTemplate, sendWhatsAppFreeText } from "@/lib/integrations/whatsapp";
+import { sendWhatsAppTemplate, sendWhatsAppFreeText, getWhatsAppCredentialsForOrg } from "@/lib/integrations/whatsapp";
 import { deliverWebhook } from "@/lib/webhooks";
 import { incrementUsage } from "@/lib/limits";
 import { runAdsSyncForOrg } from "@/lib/integrations/sync";
@@ -26,18 +26,19 @@ const whatsappWorker = new Worker<WhatsappSendJob>(
     });
 
     try {
+      const creds = await getWhatsAppCredentialsForOrg(organizationId);
       let result;
       if (templateId) {
         const template = await prisma.whatsAppTemplate.findUniqueOrThrow({ where: { id: templateId } });
         const params = Object.values(variables ?? {});
-        result = await sendWhatsAppTemplate({
+        result = await sendWhatsAppTemplate(creds, {
           toPhone,
           templateName: template.name,
           languageCode: template.language,
           bodyParams: params,
         });
       } else if (bodyText) {
-        result = await sendWhatsAppFreeText(toPhone, bodyText);
+        result = await sendWhatsAppFreeText(creds, toPhone, bodyText);
       } else {
         throw new Error("Job has neither templateId nor bodyText");
       }
