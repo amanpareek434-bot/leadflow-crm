@@ -31,7 +31,7 @@ const NAV = [
 export function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-muted/20 md:flex">
+    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-sidebar md:flex">
       <div className="flex h-16 items-center gap-2 px-6 font-bold">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <Zap className="h-4 w-4" />

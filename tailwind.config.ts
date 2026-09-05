@@ -59,6 +59,7 @@ const config: Config = {
         "accent-teal": "hsl(var(--accent-teal))",
         "accent-amber": "hsl(var(--accent-amber))",
         "accent-rose": "hsl(var(--accent-rose))",
+        sidebar: "hsl(var(--sidebar))",
       },
       borderRadius: {
         lg: "var(--radius)",
