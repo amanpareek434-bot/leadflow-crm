@@ -1,0 +1,479 @@
+// CRM SaaS — Prisma schema
+// Multi-tenant: every business record hangs off Organization (org) so a single
+// deployment can serve many customers (each customer = one Organization).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy, auth, billing
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  OWNER
+  ADMIN
+  AGENT
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  timezone  String   @default("Asia/Kolkata")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users              User[]
+  invites            Invite[]
+  leads              Lead[]
+  contacts           Contact[]
+  pipelines          Pipeline[]
+  deals              Deal[]
+  activities         Activity[]
+  whatsappTemplates  WhatsAppTemplate[]
+  automationRules    AutomationRule[]
+  whatsappMessages   WhatsAppMessageLog[]
+  integrations       Integration[]
+  adInsights         AdInsight[]
+  webhookSubs        WebhookSubscription[]
+  apiKeys            ApiKey[]
+  auditLogs          AuditLog[]
+  subscription       Subscription?
+  usageCounters      UsageCounter[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  email          String   @unique
+  passwordHash   String
+  role           UserRole @default(AGENT)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  assignedLeads  Lead[]        @relation("AssignedLeads")
+  activities     Activity[]
+  auditLogs      AuditLog[]
+
+  @@index([organizationId])
+}
+
+model Invite {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           UserRole @default(AGENT)
+  token          String   @unique
+  acceptedAt     DateTime?
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId])
+}
+
+model Plan {
+  id                String   @id @default(cuid())
+  key               String   @unique // starter | growth | pro
+  name              String
+  priceMonthlyPaise Int      // amount in paise (INR) for Razorpay
+  maxUsers          Int
+  maxLeads          Int
+  maxWhatsappPerMo  Int
+  features          Json     // string[] of feature bullet points
+  razorpayPlanId    String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+
+  subscriptions Subscription[]
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+model Subscription {
+  id                     String             @id @default(cuid())
+  organizationId         String             @unique
+  organization           Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  planId                 String
+  plan                   Plan               @relation(fields: [planId], references: [id])
+  status                 SubscriptionStatus @default(TRIALING)
+  razorpayCustomerId     String?
+  razorpaySubscriptionId String?
+  currentPeriodEnd       DateTime?
+  trialEndsAt            DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+}
+
+// Rolling counters used to enforce plan limits (leads created, WhatsApp sends) per month.
+model UsageCounter {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  metric         String   // "leads" | "whatsapp_messages"
+  periodKey      String   // "2026-09"
+  count          Int      @default(0)
+
+  @@unique([organizationId, metric, periodKey])
+}
+
+// ---------------------------------------------------------------------------
+// CRM core: leads, contacts, pipeline, deals, activity timeline
+// ---------------------------------------------------------------------------
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  NEGOTIATION
+  WON
+  LOST
+  DEAD
+}
+
+enum LeadSource {
+  MANUAL
+  META_ADS
+  GOOGLE_ADS
+  SHOPIFY
+  WEBSITE
+  IMPORT
+  API
+}
+
+model Lead {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  email          String?
+  phone          String?
+  company        String?
+  status         LeadStatus   @default(NEW)
+  source         LeadSource   @default(MANUAL)
+  sourceRef      String?      // e.g. Meta form id, Shopify order id
+  value          Int?         // estimated deal value in paise
+  tags           String[]     @default([])
+  customFields   Json?
+  assignedToId   String?
+  assignedTo     User?        @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  pipelineId     String?
+  pipeline       Pipeline?    @relation(fields: [pipelineId], references: [id])
+  stageId        String?
+  stage          Stage?       @relation(fields: [stageId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  deals            Deal[]
+  activities       Activity[]
+  whatsappMessages WhatsAppMessageLog[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
+}
+
+model Contact {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  email          String?
+  phone          String?
+  source         LeadSource   @default(MANUAL)
+  sourceRef      String?      // e.g. Shopify customer id
+  totalSpendPaise Int         @default(0)
+  ordersCount     Int         @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+}
+
+model Pipeline {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  isDefault      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  stages Stage[]
+  leads  Lead[]
+  deals  Deal[]
+
+  @@index([organizationId])
+}
+
+model Stage {
+  id         String   @id @default(cuid())
+  pipelineId String
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  name       String
+  order      Int
+  color      String   @default("#64748b")
+
+  leads Lead[]
+  deals Deal[]
+
+  @@index([pipelineId])
+}
+
+model Deal {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leadId         String
+  lead           Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  pipelineId     String?
+  pipeline       Pipeline?    @relation(fields: [pipelineId], references: [id])
+  stageId        String?
+  stage          Stage?       @relation(fields: [stageId], references: [id])
+  title          String
+  valuePaise     Int          @default(0)
+  won            Boolean?     // null = open, true = won, false = lost
+  closedAt       DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+}
+
+enum ActivityType {
+  NOTE
+  CALL
+  EMAIL
+  STATUS_CHANGE
+  WHATSAPP
+  SYSTEM
+}
+
+model Activity {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leadId         String
+  lead           Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id])
+  type           ActivityType
+  body           String
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, leadId])
+}
+
+// ---------------------------------------------------------------------------
+// WhatsApp (official Meta Cloud API)
+// ---------------------------------------------------------------------------
+
+enum WhatsAppTemplateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model WhatsAppTemplate {
+  id             String                 @id @default(cuid())
+  organizationId String
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  metaTemplateId String?
+  name           String
+  language       String                 @default("en_US")
+  category       String                 @default("MARKETING")
+  bodyText       String
+  variables      String[]               @default([])
+  status         WhatsAppTemplateStatus @default(PENDING)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  automationRules AutomationRule[]
+  messages        WhatsAppMessageLog[]
+
+  @@index([organizationId])
+}
+
+// The "which template fires when a lead becomes Lost / Dead / Won" mapping.
+model AutomationRule {
+  id             String            @id @default(cuid())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  triggerStatus  LeadStatus
+  templateId     String
+  template       WhatsAppTemplate  @relation(fields: [templateId], references: [id])
+  delayMinutes   Int               @default(0)
+  isActive       Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([organizationId, triggerStatus])
+}
+
+enum MessageDirection {
+  OUTBOUND
+  INBOUND
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+model WhatsAppMessageLog {
+  id             String            @id @default(cuid())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leadId         String?
+  lead           Lead?             @relation(fields: [leadId], references: [id])
+  templateId     String?
+  template       WhatsAppTemplate? @relation(fields: [templateId], references: [id])
+  direction      MessageDirection  @default(OUTBOUND)
+  toPhone        String
+  body           String?
+  waMessageId    String?
+  status         MessageStatus     @default(QUEUED)
+  errorMessage   String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([organizationId, leadId])
+}
+
+// ---------------------------------------------------------------------------
+// Integrations: Meta Ads, Google Ads, Shopify, Google Sheets
+// ---------------------------------------------------------------------------
+
+enum IntegrationType {
+  META_ADS
+  GOOGLE_ADS
+  SHOPIFY
+  GOOGLE_SHEETS
+  WHATSAPP
+}
+
+enum IntegrationStatus {
+  NOT_CONNECTED
+  CONNECTED
+  ERROR
+}
+
+model Integration {
+  id             String            @id @default(cuid())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  type           IntegrationType
+  status         IntegrationStatus @default(NOT_CONNECTED)
+  // AES-256-GCM encrypted JSON blob (tokens, shop domain, spreadsheet id, etc.) — see src/lib/encryption.ts
+  credentials    String?
+  settings       Json?
+  lastSyncedAt   DateTime?
+  lastError      String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([organizationId, type])
+}
+
+// Daily ad performance rollup, used by the Reports > Ads dashboard.
+model AdInsight {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  platform       IntegrationType // META_ADS | GOOGLE_ADS
+  campaignId     String
+  campaignName   String
+  date           DateTime
+  spendPaise     Int          @default(0)
+  impressions    Int          @default(0)
+  clicks         Int          @default(0)
+  conversions    Int          @default(0)
+  createdAt      DateTime     @default(now())
+
+  @@unique([organizationId, platform, campaignId, date])
+  @@index([organizationId, date])
+}
+
+// ---------------------------------------------------------------------------
+// Outgoing API: webhooks + API keys (so a customer can pipe data to their ERP / Sheets)
+// ---------------------------------------------------------------------------
+
+model WebhookSubscription {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  url            String
+  secret         String
+  events         String[] // lead.created | lead.status_changed | deal.won | deal.lost | whatsapp.status
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  deliveries WebhookDeliveryLog[]
+
+  @@index([organizationId])
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model WebhookDeliveryLog {
+  id             String               @id @default(cuid())
+  subscriptionId String
+  subscription   WebhookSubscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  event          String
+  payload        Json
+  status         WebhookDeliveryStatus @default(PENDING)
+  responseCode   Int?
+  attempt        Int                  @default(1)
+  createdAt      DateTime             @default(now())
+
+  @@index([subscriptionId])
+}
+
+model ApiKey {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  keyPrefix      String       // first 8 chars shown in UI, e.g. "crm_live_ab12"
+  keyHash        String       // sha256 of the full key
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+}
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id])
+  action         String
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
+}
