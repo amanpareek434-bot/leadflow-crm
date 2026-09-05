@@ -5,7 +5,6 @@ import {
   MessageCircle,
   Megaphone,
   ShoppingBag,
-  Sheet,
   Webhook,
   BarChart3,
   Users,
@@ -13,6 +12,15 @@ import {
   ArrowRight,
   CheckCircle2,
 } from "lucide-react";
+
+const ACCENTS = [
+  "text-accent-blue bg-accent-blue/10",
+  "text-accent-violet bg-accent-violet/10",
+  "text-accent-teal bg-accent-teal/10",
+  "text-accent-amber bg-accent-amber/10",
+  "text-accent-rose bg-accent-rose/10",
+  "text-primary bg-primary/10",
+];
 
 const FEATURES = [
   {
@@ -49,12 +57,12 @@ const FEATURES = [
 ];
 
 const INTEGRATIONS = [
-  { name: "Meta Ads", color: "bg-blue-100 text-blue-700" },
-  { name: "Google Ads", color: "bg-amber-100 text-amber-700" },
-  { name: "Shopify", color: "bg-emerald-100 text-emerald-700" },
-  { name: "WhatsApp Business", color: "bg-green-100 text-green-700" },
-  { name: "Google Sheets", color: "bg-teal-100 text-teal-700" },
-  { name: "Your ERP (Webhooks/API)", color: "bg-indigo-100 text-indigo-700" },
+  { name: "Meta Ads", color: "text-accent-blue bg-accent-blue/10" },
+  { name: "Google Ads", color: "text-accent-amber bg-accent-amber/10" },
+  { name: "Shopify", color: "text-accent-teal bg-accent-teal/10" },
+  { name: "WhatsApp Business", color: "text-success bg-success/10" },
+  { name: "Google Sheets", color: "text-accent-teal bg-accent-teal/10" },
+  { name: "Your ERP (Webhooks/API)", color: "text-accent-violet bg-accent-violet/10" },
 ];
 
 export default function HomePage() {
@@ -62,16 +70,26 @@ export default function HomePage() {
     <>
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_hsl(var(--primary)/0.12),_transparent_60%)]" />
+        <div
+          className="pointer-events-none absolute inset-0 -z-10 opacity-70"
+          style={{
+            background:
+              "radial-gradient(circle at 20% 0%, hsl(var(--accent-violet) / 0.18), transparent 45%), radial-gradient(circle at 80% 10%, hsl(var(--accent-blue) / 0.16), transparent 45%), radial-gradient(circle at 50% 60%, hsl(var(--accent-teal) / 0.10), transparent 55%)",
+          }}
+        />
         <div className="container flex flex-col items-center gap-6 py-24 text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/60 px-4 py-1.5 text-sm text-muted-foreground">
             <ShieldCheck className="h-4 w-4 text-primary" /> One CRM. Every channel. Zero manual follow-up.
           </span>
           <h1 className="max-w-3xl text-balance text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-            The CRM that connects your <span className="text-primary">Ads, Shopify & WhatsApp</span> — automatically
+            The CRM that connects your{" "}
+            <span className="bg-gradient-to-r from-accent-violet via-primary to-accent-blue bg-clip-text text-transparent">
+              Ads, Shopify &amp; WhatsApp
+            </span>{" "}
+            — automatically
           </h1>
           <p className="max-w-2xl text-lg text-muted-foreground">
-            Import leads from Meta Ads, Google Ads & Shopify, auto-message lost or won leads on official WhatsApp with
+            Import leads from Meta Ads, Google Ads &amp; Shopify, auto-message lost or won leads on official WhatsApp with
             the template you choose, and pipe every record to Google Sheets or your ERP — all from one dashboard.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -113,10 +131,10 @@ export default function HomePage() {
           </p>
         </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f) => (
+          {FEATURES.map((f, i) => (
             <Card key={f.title} className="transition-shadow hover:shadow-md">
               <CardHeader>
-                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <div className={`mb-2 flex h-10 w-10 items-center justify-center rounded-lg ${ACCENTS[i % ACCENTS.length]}`}>
                   <f.icon className="h-5 w-5" />
                 </div>
                 <CardTitle className="text-lg">{f.title}</CardTitle>
@@ -131,7 +149,7 @@ export default function HomePage() {
       <section className="border-t border-border/60 bg-muted/30 py-24">
         <div className="container grid items-center gap-12 lg:grid-cols-2">
           <div>
-            <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700">
+            <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-success/10 px-3 py-1 text-sm font-medium text-success">
               <MessageCircle className="h-4 w-4" /> Official WhatsApp Business Platform
             </span>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">You decide which message goes to which lead</h2>
@@ -154,9 +172,9 @@ export default function HomePage() {
           <Card className="p-2">
             <CardContent className="space-y-3 p-4">
               {[
-                { status: "LOST", label: "Lost Lead", template: "lost_lead_reengage", color: "bg-rose-100 text-rose-700" },
-                { status: "DEAD", label: "Dead Lead", template: "dead_lead_offer", color: "bg-neutral-200 text-neutral-700" },
-                { status: "WON", label: "Won Lead", template: "won_lead_thankyou", color: "bg-emerald-100 text-emerald-700" },
+                { status: "LOST", label: "Lost Lead", template: "lost_lead_reengage", color: "bg-accent-rose/10 text-accent-rose" },
+                { status: "DEAD", label: "Dead Lead", template: "dead_lead_offer", color: "bg-muted text-muted-foreground" },
+                { status: "WON", label: "Won Lead", template: "won_lead_thankyou", color: "bg-success/10 text-success" },
               ].map((r) => (
                 <div key={r.status} className="flex items-center justify-between rounded-lg border border-border p-3">
                   <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${r.color}`}>{r.label}</span>
@@ -170,16 +188,25 @@ export default function HomePage() {
       </section>
 
       {/* CTA */}
-      <section className="container py-24 text-center">
-        <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Ready to stop losing leads in the gaps?</h2>
-        <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-          Set up your pipeline, connect your ad accounts and WhatsApp, and start converting more leads today.
-        </p>
-        <Link href="/register">
-          <Button size="lg" className="mt-8 gap-2">
-            Create your free account <ArrowRight className="h-4 w-4" />
-          </Button>
-        </Link>
+      <section className="relative overflow-hidden py-24 text-center">
+        <div
+          className="pointer-events-none absolute inset-0 -z-10 opacity-60"
+          style={{
+            background:
+              "radial-gradient(circle at 50% 100%, hsl(var(--accent-blue) / 0.14), transparent 55%)",
+          }}
+        />
+        <div className="container">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Ready to stop losing leads in the gaps?</h2>
+          <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
+            Set up your pipeline, connect your ad accounts and WhatsApp, and start converting more leads today.
+          </p>
+          <Link href="/register">
+            <Button size="lg" className="mt-8 gap-2">
+              Create your free account <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
       </section>
     </>
   );

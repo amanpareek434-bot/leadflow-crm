@@ -52,6 +52,13 @@ const config: Config = {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
+        // Extra hues for variety (KPI cards, feature icons) — not tied to a
+        // semantic meaning like the tokens above, just visual accents.
+        "accent-blue": "hsl(var(--accent-blue))",
+        "accent-violet": "hsl(var(--accent-violet))",
+        "accent-teal": "hsl(var(--accent-teal))",
+        "accent-amber": "hsl(var(--accent-amber))",
+        "accent-rose": "hsl(var(--accent-rose))",
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -12,8 +12,24 @@ declare module "next-auth" {
       organizationId: string;
       organizationName: string;
       organizationSlug: string;
+      isPlatformAdmin: boolean;
     } & DefaultSession["user"];
   }
+}
+
+/**
+ * Platform (super-admin) access — deliberately NOT a database column. It's
+ * just an allowlist of emails in PLATFORM_ADMIN_EMAILS (comma-separated),
+ * checked at login time. This lets the platform owner see the cross-tenant
+ * /admin panel (all organizations/customers) without any schema migration,
+ * and without a way for a regular signup to ever grant themselves access.
+ */
+function isPlatformAdminEmail(email: string): boolean {
+  const allowlist = (process.env.PLATFORM_ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return allowlist.includes(email.toLowerCase());
 }
 
 export const authOptions: AuthOptions = {
@@ -48,6 +64,7 @@ export const authOptions: AuthOptions = {
           organizationId: user.organizationId,
           organizationName: user.organization.name,
           organizationSlug: user.organization.slug,
+          isPlatformAdmin: isPlatformAdminEmail(user.email),
         } as any;
       },
     }),
@@ -61,6 +78,7 @@ export const authOptions: AuthOptions = {
         token.organizationId = u.organizationId;
         token.organizationName = u.organizationName;
         token.organizationSlug = u.organizationSlug;
+        token.isPlatformAdmin = u.isPlatformAdmin;
       }
       return token;
     },
@@ -70,6 +88,7 @@ export const authOptions: AuthOptions = {
       session.user.organizationId = token.organizationId as string;
       session.user.organizationName = token.organizationName as string;
       session.user.organizationSlug = token.organizationSlug as string;
+      session.user.isPlatformAdmin = Boolean(token.isPlatformAdmin);
       return session;
     },
   },

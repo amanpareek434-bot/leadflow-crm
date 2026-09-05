@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Zap } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function SiteHeader() {
   return (
@@ -17,7 +18,8 @@ export function SiteHeader() {
           <Link href="/#integrations" className="hover:text-foreground">Integrations</Link>
           <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
         </nav>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Link href="/login">
             <Button variant="ghost">Log in</Button>
           </Link>

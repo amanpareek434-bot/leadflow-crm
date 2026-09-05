@@ -43,10 +43,10 @@ export default async function DashboardOverviewPage() {
   });
 
   const stats = [
-    { label: "Total leads", value: formatNumber(totalLeads), icon: Users2 },
-    { label: "Won", value: formatNumber(wonLeads), icon: Trophy },
-    { label: "Lost", value: formatNumber(lostLeads), icon: TrendingDown },
-    { label: "WhatsApp sent", value: formatNumber(whatsappSent), icon: MessageCircle },
+    { label: "Total leads", value: formatNumber(totalLeads), icon: Users2, color: "text-accent-blue bg-accent-blue/10" },
+    { label: "Won", value: formatNumber(wonLeads), icon: Trophy, color: "text-success bg-success/10" },
+    { label: "Lost", value: formatNumber(lostLeads), icon: TrendingDown, color: "text-accent-rose bg-accent-rose/10" },
+    { label: "WhatsApp sent", value: formatNumber(whatsappSent), icon: MessageCircle, color: "text-accent-teal bg-accent-teal/10" },
   ];
 
   return (
@@ -61,7 +61,7 @@ export default async function DashboardOverviewPage() {
                 <p className="text-sm text-muted-foreground">{s.label}</p>
                 <p className="mt-1 text-2xl font-bold">{s.value}</p>
               </div>
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <span className={`flex h-10 w-10 items-center justify-center rounded-lg ${s.color}`}>
                 <s.icon className="h-5 w-5" />
               </span>
             </CardContent>

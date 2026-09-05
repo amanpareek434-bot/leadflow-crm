@@ -51,12 +51,14 @@ export const LEAD_STATUS_LABELS: Record<string, string> = {
   DEAD: "Dead",
 };
 
+// Built on the theme's CSS-variable tokens (not fixed Tailwind color scales)
+// so these badges look right in both light and dark mode.
 export const LEAD_STATUS_COLORS: Record<string, string> = {
-  NEW: "bg-slate-100 text-slate-700",
-  CONTACTED: "bg-blue-100 text-blue-700",
-  QUALIFIED: "bg-indigo-100 text-indigo-700",
-  NEGOTIATION: "bg-amber-100 text-amber-700",
-  WON: "bg-emerald-100 text-emerald-700",
-  LOST: "bg-rose-100 text-rose-700",
-  DEAD: "bg-neutral-200 text-neutral-600",
+  NEW: "bg-muted text-muted-foreground",
+  CONTACTED: "bg-accent-blue/10 text-accent-blue",
+  QUALIFIED: "bg-accent-violet/10 text-accent-violet",
+  NEGOTIATION: "bg-accent-amber/10 text-accent-amber",
+  WON: "bg-success/10 text-success",
+  LOST: "bg-accent-rose/10 text-accent-rose",
+  DEAD: "bg-muted text-muted-foreground",
 };
