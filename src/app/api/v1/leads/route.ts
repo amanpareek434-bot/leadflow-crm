@@ -3,13 +3,16 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { extractBearerToken, verifyApiKey } from "@/lib/api-keys";
 import { emitEvent } from "@/lib/webhooks";
-import type { LeadStatus } from "@prisma/client";
+import type { LeadStatus, LeadSource } from "@prisma/client";
 
 const LEAD_STATUSES = ["NEW", "CONTACTED", "QUALIFIED", "NEGOTIATION", "WON", "LOST", "DEAD"] as const;
+const LEAD_SOURCES = ["MANUAL", "META_ADS", "GOOGLE_ADS", "SHOPIFY", "WEBSITE", "IMPORT", "API"] as const;
 
-// GET /api/v1/leads?status=NEW&since=2026-01-01 — public outgoing REST API for
-// a customer's own ERP/scripts. Authenticated via `Authorization: Bearer
-// crm_live_xxx`, NOT a browser session.
+// GET /api/v1/leads?status=NEW&source=META_ADS&since=2026-01-01 — public
+// outgoing REST API for a customer's own ERP/scripts. Authenticated via
+// `Authorization: Bearer crm_live_xxx` (a per-organization key from
+// Integrations > API Keys), NOT a browser session — every key only ever
+// sees that one organization's leads, never another customer's.
 export async function GET(req: Request) {
   try {
     const token = extractBearerToken(req.headers.get("authorization"));
@@ -19,6 +22,8 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const statusParam = searchParams.get("status");
     const status = LEAD_STATUSES.includes(statusParam as LeadStatus) ? (statusParam as LeadStatus) : undefined;
+    const sourceParam = searchParams.get("source");
+    const source = LEAD_SOURCES.includes(sourceParam as LeadSource) ? (sourceParam as LeadSource) : undefined;
     const sinceParam = searchParams.get("since");
     const since = sinceParam && !Number.isNaN(Date.parse(sinceParam)) ? new Date(sinceParam) : undefined;
 
@@ -26,6 +31,7 @@ export async function GET(req: Request) {
       where: {
         organizationId: apiKey.organizationId,
         ...(status ? { status } : {}),
+        ...(source ? { source } : {}),
         ...(since ? { createdAt: { gte: since } } : {}),
       },
       orderBy: { createdAt: "desc" },
