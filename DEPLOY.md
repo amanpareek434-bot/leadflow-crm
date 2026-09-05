@@ -45,17 +45,21 @@ The **web** service also needs `NEXT_PUBLIC_RAZORPAY_KEY_ID` (same value as `RAZ
 
 ## 4. First deploy & database migration
 
-The Dockerfile's start command already runs `npx prisma db push` before `npm start`, so tables are created/synced automatically on every deploy of the **web** service (no separate migration files needed to get started). After the first successful deploy, seed the demo plans (run once):
+The Dockerfile's start command runs, in order: `prisma db push` (creates/syncs every table from `prisma/schema.prisma`), then `npm run db:seed` (creates the Starter/Growth/Pro plans, a demo account, and a platform-owner account), then finally starts the app — all automatically, on every deploy of the **web** service. Nothing manual to run after a deploy.
 
-```
-railway run --service web npm run db:seed
-```
+Every write in `prisma/seed.ts` is an upsert, so this being safe to re-run on every deploy is deliberate — it won't create duplicates or reset anything a real customer has since changed.
 
-(Or open a Railway shell for the web service and run `npm run db:seed` directly.) This creates the Starter/Growth/Pro plans your `/pricing` page and billing settings page read from.
+Seeded logins (**change these passwords after first login** — they're in this repo's source):
+- Demo account: `owner@demo.com` / `Demo@1234`
+- Platform-owner account: `admin@leadflow.com` / `Admin@12345` — also add `PLATFORM_ADMIN_EMAILS=admin@leadflow.com` to both services' Variables to unlock the cross-tenant `/admin` panel for this account (see the "Platform-admin panel" note further down).
 
 ## 5. Custom domain (optional, for selling this)
 
 Railway → web service → **Settings → Networking → Custom Domain**. Point your domain's CNAME at the value Railway gives you, then update `APP_URL`/`NEXTAUTH_URL` (and every integration's redirect URI below) to match.
+
+## 6. Platform-admin panel
+
+`/admin` is a cross-tenant view (every organization, plan, and usage number — not scoped to one customer) meant only for you, the platform owner. It's gated by a `PLATFORM_ADMIN_EMAILS` env var (comma-separated emails), not a database column — set it on the **web** service to the email of the seeded `admin@leadflow.com` account (or your own account's email once you register one and add it here). Anyone not on that list never sees `/admin` exists, no matter what they do in the product UI.
 
 ---
 

@@ -45,6 +45,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
+# Overwrites the minimal package.json that .next/standalone ships with its
+# own (no "scripts" section) — this one has `db:seed` etc, needed below.
+COPY --from=builder /app/package.json ./package.json
 
 USER nextjs
 # Railway always injects its own PORT env var at runtime (observed as 8080 in
@@ -67,4 +70,10 @@ ENV HOSTNAME="0.0.0.0"
 # not exist" until this ran. Once you have a stable schema and want a real
 # migration history, switch back to `prisma migrate deploy` (generate the
 # migration files locally against a dev database first).
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss --skip-generate && node server.js"]
+#
+# `db:seed` runs on every boot too — every write in prisma/seed.ts is an
+# upsert, so re-running it against data that already exists is a no-op, not
+# a duplicate. This is what creates/keeps the demo (owner@demo.com) and
+# platform-admin (admin@leadflow.com) accounts and the Starter/Growth/Pro
+# plans present without a manual `railway run` step after each deploy.
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss --skip-generate && npm run db:seed && node server.js"]
