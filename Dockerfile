@@ -35,6 +35,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 --gid nodejs nextjs
 
+# Full node_modules (not just the standalone-traced subset) so the `prisma`
+# CLI is available at container start to push the schema to the real
+# database — `railway.json`'s startCommand isn't honored when Railway builds
+# from this Dockerfile (its own CMD below runs instead), so the one-time
+# schema sync has to happen here rather than relying on that file.
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
@@ -53,4 +59,12 @@ EXPOSE 8080
 # app logs looked perfectly healthy). Force it back to the wildcard address.
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+# No pre-generated migration files exist yet (this project has never been
+# run against a real Postgres to create them), so `prisma migrate deploy`
+# would silently do nothing and leave the database empty. `db push` syncs
+# the schema directly against whatever DATABASE_URL Railway provides at
+# runtime — every request touching the DB was crashing with "relation does
+# not exist" until this ran. Once you have a stable schema and want a real
+# migration history, switch back to `prisma migrate deploy` (generate the
+# migration files locally against a dev database first).
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss --skip-generate && node server.js"]

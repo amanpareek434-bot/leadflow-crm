@@ -45,7 +45,7 @@ The **web** service also needs `NEXT_PUBLIC_RAZORPAY_KEY_ID` (same value as `RAZ
 
 ## 4. First deploy & database migration
 
-`railway.json`'s start command already runs `npx prisma migrate deploy` before `npm start`, so tables are created automatically on every deploy of the **web** service. After the first successful deploy, seed the demo plans (run once):
+The Dockerfile's start command already runs `npx prisma db push` before `npm start`, so tables are created/synced automatically on every deploy of the **web** service (no separate migration files needed to get started). After the first successful deploy, seed the demo plans (run once):
 
 ```
 railway run --service web npm run db:seed
