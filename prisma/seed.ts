@@ -133,8 +133,33 @@ async function main() {
     create: { organizationId: org.id, triggerStatus: "LOST", templateId: template.id, delayMinutes: 0 },
   });
 
+  // A dedicated account for the platform owner (you). Its login is a normal
+  // per-org account like any customer's — what makes it a "platform admin"
+  // is putting this SAME email into the PLATFORM_ADMIN_EMAILS env var on
+  // Railway, which is what unlocks the cross-tenant /admin panel for it.
+  console.log("Seeding platform-owner account...");
+  const adminOrg = await prisma.organization.upsert({
+    where: { slug: "leadflow-hq" },
+    update: {},
+    create: { name: "LeadFlow HQ", slug: "leadflow-hq" },
+  });
+  const adminPasswordHash = await bcrypt.hash("Admin@12345", 10);
+  await prisma.user.upsert({
+    where: { email: "admin@leadflow.com" },
+    update: {},
+    create: {
+      organizationId: adminOrg.id,
+      name: "Platform Admin",
+      email: "admin@leadflow.com",
+      passwordHash: adminPasswordHash,
+      role: "OWNER",
+    },
+  });
+
   console.log("\nDone.");
-  console.log("Login with: owner@demo.com / Demo@1234");
+  console.log("Demo login:          owner@demo.com / Demo@1234");
+  console.log("Platform admin login: admin@leadflow.com / Admin@12345");
+  console.log("  -> also set PLATFORM_ADMIN_EMAILS=admin@leadflow.com on Railway to unlock /admin for this account.");
 }
 
 main()
