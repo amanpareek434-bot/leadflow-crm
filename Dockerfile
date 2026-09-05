@@ -8,6 +8,12 @@ FROM node:20-alpine AS base
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
+# `npm ci` runs the `postinstall` script (`prisma generate`), which needs the
+# schema file and a syntactically-valid DATABASE_URL to be present — copy the
+# former and stub the latter before installing (the full source, and the real
+# DATABASE_URL, only show up later in the `builder`/`runner` stages).
+COPY prisma ./prisma
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 RUN npm ci
 
 FROM base AS builder
