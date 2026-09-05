@@ -125,6 +125,42 @@ export async function fetchApprovedTemplates(creds: WhatsAppCredentials) {
   }>;
 }
 
+export type CreateTemplateArgs = {
+  name: string; // lowercase, letters/numbers/underscores only — Meta rejects anything else
+  language: string;
+  category: "MARKETING" | "UTILITY" | "AUTHENTICATION";
+  bodyText: string;
+};
+
+/**
+ * Submits a brand-new template to Meta for review — this is the ONLY way a
+ * template actually becomes usable; there is no "mark it approved yourself"
+ * option, because a template that isn't genuinely approved on Meta's systems
+ * will simply fail at send time no matter what status is stored locally.
+ * Returns Meta's id + starting status (normally "PENDING" — reviews usually
+ * take anywhere from a few minutes to about a day).
+ */
+export async function createWhatsAppTemplate(creds: WhatsAppCredentials, args: CreateTemplateArgs) {
+  const res = await fetch(apiUrl(`${creds.businessAccountId}/message_templates`), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${creds.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name: args.name,
+      language: args.language,
+      category: args.category,
+      components: [{ type: "BODY", text: args.bodyText }],
+    }),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json?.error?.error_user_msg ?? json?.error?.message ?? `Meta rejected the template (${res.status})`);
+  }
+  return json as { id: string; status: string; category: string };
+}
+
 /** Verifies the X-Hub-Signature-256 header Meta sends on every webhook POST (uses the platform-wide WHATSAPP_APP_SECRET). */
 export function verifyMetaSignature(rawBody: string, signatureHeader: string | null, appSecret: string): boolean {
   if (!signatureHeader) return false;

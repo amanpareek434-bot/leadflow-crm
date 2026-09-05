@@ -65,7 +65,6 @@ export function AddTemplateDialog() {
     language: "en_US",
     category: "MARKETING",
     bodyText: "",
-    status: "APPROVED",
   });
 
   function update<K extends keyof typeof form>(field: K) {
@@ -84,15 +83,15 @@ export function AddTemplateDialog() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast({ title: "Couldn't add template", description: json.error ?? "Invalid input", variant: "destructive" });
+        toast({ title: "Couldn't submit template", description: json.error ?? "Invalid input", variant: "destructive" });
         return;
       }
-      toast({ title: "Template added", description: `"${form.name}" is ready to use in automations.` });
+      toast({ title: "Submitted to Meta for review", description: `"${form.name}" is pending approval — usually a few hours to a day.` });
       setOpen(false);
-      setForm({ name: "", language: "en_US", category: "MARKETING", bodyText: "", status: "APPROVED" });
+      setForm({ name: "", language: "en_US", category: "MARKETING", bodyText: "" });
       router.refresh();
     } catch {
-      toast({ title: "Couldn't add template", description: "Something went wrong.", variant: "destructive" });
+      toast({ title: "Couldn't submit template", description: "Something went wrong.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -103,20 +102,23 @@ export function AddTemplateDialog() {
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4" />
-          Add template manually
+          Create new template
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add a WhatsApp template</DialogTitle>
+          <DialogTitle>Submit a new WhatsApp template</DialogTitle>
           <DialogDescription>
-            Use this for a template that's already approved in WhatsApp Business Manager.
+            This sends the template straight to Meta for review — there's no way to skip that step, a template only
+            works once Meta genuinely approves it. Already have an approved template from WhatsApp Business Manager?
+            Use "Sync from WhatsApp" instead.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Template name</Label>
-            <Input id="name" required value={form.name} onChange={update("name")} placeholder="lead_lost_followup" />
+            <Input id="name" required value={form.name} onChange={update("name")} placeholder="lost_lead_followup" />
+            <p className="text-xs text-muted-foreground">Lowercase letters, numbers, and underscores only.</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -143,17 +145,8 @@ export function AddTemplateDialog() {
               placeholder="Hi {{1}}, sorry to see you go. If anything changes, we're here!"
             />
             <p className="text-xs text-muted-foreground">
-              Use <code>{"{{1}}"}</code>, <code>{"{{2}}"}</code>, etc. as variable placeholders — these must match
-              the approved template exactly.
+              Use <code>{"{{1}}"}</code>, <code>{"{{2}}"}</code>, etc. as variable placeholders.
             </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
-            <Select id="status" value={form.status} onChange={update("status")}>
-              <option value="APPROVED">Approved (already live on WhatsApp)</option>
-              <option value="PENDING">Pending review</option>
-              <option value="REJECTED">Rejected</option>
-            </Select>
           </div>
           <DialogFooter>
             <DialogClose asChild>
@@ -162,7 +155,7 @@ export function AddTemplateDialog() {
               </Button>
             </DialogClose>
             <Button type="submit" disabled={loading}>
-              {loading ? "Adding..." : "Add template"}
+              {loading ? "Submitting..." : "Submit for approval"}
             </Button>
           </DialogFooter>
         </form>
