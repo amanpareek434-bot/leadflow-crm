@@ -2,8 +2,14 @@
 # Recommended default is Railway's zero-config Nixpacks builder (no Dockerfile
 # needed) for both the web app and the worker — see DEPLOY.md. Use this
 # Dockerfile only if you specifically want a containerized web deploy.
+#
+# NOTE: uses Debian "slim" (not Alpine) as the base — Prisma's query engine
+# needs OpenSSL, and Alpine's musl libc + newer OpenSSL 3.x has repeatedly
+# caused Prisma engine-detection failures in this project's testing. Slim
+# avoids that whole class of problem at the cost of a slightly larger image.
 
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 FROM base AS deps
 WORKDIR /app
@@ -20,8 +26,6 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Prisma's CLI wants DATABASE_URL present to run `generate` (it doesn't connect
-# to a DB for that step) — Railway injects the real one at runtime.
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 RUN npx prisma generate
 RUN npm run build
@@ -29,7 +33,7 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 --gid nodejs nextjs
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
