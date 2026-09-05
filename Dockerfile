@@ -41,7 +41,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 
 USER nextjs
-EXPOSE 3000
-ENV PORT=3000
+# Railway always injects its own PORT env var at runtime (observed as 8080 in
+# this project's deploys) — EXPOSE just needs to match that for Railway's edge
+# proxy to auto-target the right port; we deliberately do NOT set ENV PORT
+# ourselves so Railway's runtime value (whatever it is) always wins.
+EXPOSE 8080
 
 CMD ["node", "server.js"]
