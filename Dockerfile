@@ -46,5 +46,11 @@ USER nextjs
 # proxy to auto-target the right port; we deliberately do NOT set ENV PORT
 # ourselves so Railway's runtime value (whatever it is) always wins.
 EXPOSE 8080
+# CRITICAL: Next.js's standalone server.js does `process.env.HOSTNAME || '0.0.0.0'`,
+# and Docker auto-sets HOSTNAME to the container's own id for every container —
+# which made Next bind ONLY to the container's internal bridge IP instead of
+# all interfaces, so Railway's edge proxy could never reach it (instant 502s,
+# app logs looked perfectly healthy). Force it back to the wildcard address.
+ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "server.js"]
